@@ -1,0 +1,55 @@
+---
+title: "Water Level Analysis"
+author: Jieyu Yao
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+library(ggplot2)
+library(plotly)
+water_level <- readxl::read_excel("/Users/jasy/Desktop/oa_waterlevel/water level.xlsx")[,1:2]
+water_level
+```
+```{r}
+water_level_ts = ts(water_level$max_water_level, start = water_level$year[1], frequency = 1 )
+plot(water_level_ts)
+
+```
+```{r}
+acfdf <- acf(water_level_ts, lag.max = 24, plot=FALSE)
+acfdf <- with(acfdf,data.frame(lag,acf))
+ggplot(data = acfdf, mapping = aes(x = lag, y = acf))+
+  geom_hline(aes(yintercept = 0))+
+  geom_segment(mapping = aes(xend = lag, yend = 0))+
+  ggtitle("ACF Analysis with Water Level")
+```
+
+
+```{r}
+AR_predict = arima(water_level_ts,seasonal = list(order = c(1, 0L, 0),period=4))
+predict(AR_predict,n.ahead = 200)
+```
+```{r,fig.width=4,fig.height=3}
+library(extRemes)
+fit1 <- fevd(max_water_level,water_level, units = "deg C")
+fit1
+distill(fit1)
+plot(fit1)
+```
+The first graph is Quantile-quantile plot, which means most of datasets are normal distributed. Also there are some outliers which are the extreme values we concern about. The second graph is using simulated data comparing with actual data. From this graph, we can see whether the model fits good or not. In the third graph, we can see the density distribution, which is obviously biased. The last graph shows the return level with return period. That line shows slightly asending at the end of the model.The return level plot with 95% point wise normal approximation confidence interva.
+$$
+T = 1 /(1-p)
+$$
+
+```{r}
+ci(fit1, return.period = c(5,25,50,100,200), alpha = 0.05)
+```
+Ci means confidence intervals and alpha is giving the desired significance level. Here we can see the result for difference return period.
+
+Further step:
+1. Try other methods, like "Bayesian","Lmoments" and do likelihood ratio test to estimate the qualities of different models.
+2. Improve model by other relative dataset, such as annual rainfall
+3. Improve model by more dataset, such as collecting more dataset for each year
+4. Try threshold model if we have more dataset, focusing on the numbers over threshold using declusing method
+
